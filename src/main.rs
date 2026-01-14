@@ -1,3 +1,10 @@
+use::std::io::{stdout, Write};
+use crossterm::{
+    cursor,
+    event::{self, Event, KeyCode,KeyEventKind},
+    terminal::{Clear, ClearType, size},
+};
+
 enum Player {
     X,
     O
@@ -34,6 +41,7 @@ impl GameState {
         } else {
             2
         });
+
         let ozero = "0".repeat(if self.scores.1 > 99 {
             0
         } else if self.scores.1 > 9 {
@@ -41,6 +49,7 @@ impl GameState {
         } else {
             2
         });
+
         let dzero = "0".repeat(if self.scores.2 > 99 {
             0
         } else if self.scores.2 > 9 {
@@ -53,6 +62,7 @@ impl GameState {
             "O : {}{}   X : {}{}   Draw : {}{}\n\n\n",
             xzero, self.scores.0, ozero, self.scores.1, dzero, self.scores.2
         ));
+
         if let GameResult::Ongoing = self.result {
             for i in (0..9usize).step_by(3) {
                 for j in 0..6usize {
@@ -74,6 +84,7 @@ impl GameState {
                     str_buff.push('\n');
                 }
             }
+
             str_buff.push_str("\n\n");
             str_buff.push_str(&format!(
                 "Current Turn : {}\n\n",
@@ -84,57 +95,72 @@ impl GameState {
                 }
             ));
         }
+        
         str_buff.push_str(&self.msg);
         str_buff
     }
 
     fn update_state(&mut self, num_key: &char) {
         let key = *num_key as u8;
+
         if key < 48 || key > 57 {
             self.msg = String::from("Press Num Keys 0..9\nInvalid Key Press!\n");
             return;
         }
+
         let key = (key - 48) as usize;
+
         if let GameResult::Ongoing = self.result {
             if key == 0 {
                 self.reset_board();
                 self.result = GameResult::Draw;
                 self.msg = String::from("Press num Keys 1 or 2\n\n1:X\n2:O");
+
             } else if let Cell::Empty = self.board[key-1] {
                 if let Player::X = self.curr_turn {
                     self.board[key-1] = Cell::Occupide(Player::X);
                     self.curr_turn = Player::O;
+
                 } else {
                     self.board[key-1] = Cell::Occupide(Player::O);
                     self.curr_turn = Player::X;
                 }
+
                 let result = self.check_result(&(key-1));
+
                 if let GameResult::Draw = result{
                     self.reset_board();
                     self.scores.2+=if self.scores.2<255 {1} else {0};
                     self.msg = String::from("👍 It's a DRAW! 👍\n\nPress num Keys 1 or 2\n\n1:X\n2:O");
+
                 }else if let GameResult::Win(Player::X) = result {
                     self.reset_board();
                     self.scores.1 += if self.scores.1<255{1} else {0};
                     self.msg = String::from("🎉 X WON! 🎉\n\nPress num Keys 1 or 2\n\n1:X\n2:O");
+
                 }else if let GameResult::Win(Player::O) = result {
                     self.reset_board();
                     self.scores.0 += if self.scores.0<255{1} else {0};
                     self.msg = String::from("🎉 O WON! 🎉\n\nPress num Keys 1 or 2\n\n1:X\n2:O");
                 }
+
                 self.result=result;
 
             } else {
                 self.msg = String::from("Press Num Keys 0..9\nAlready Occupied!");
             }
+
         } else if key == 1 || key == 2 {
             if key == 1 {
                 self.curr_turn = Player::X;
+
             } else if key == 2 {
                 self.curr_turn = Player::O;
             }
+
             self.result = GameResult::Ongoing;
             self.msg = String::from("Press num Keys 0..9")
+
         } else {
             self.msg = String::from("Press num Keys 1 or 2\n\n1:X\n2:O\n\nInvalid Key Press!\n");
         }
@@ -241,6 +267,7 @@ impl GameState {
                 },
                 _=>{}
             }
+
         }else {
             match pos {
                 0 => {
@@ -336,14 +363,63 @@ impl GameState {
                 _=>{}
             }
         }
+        
         for cell in &self.board{
             if let &Cell::Empty = cell{
                 return GameResult::Ongoing;
             }
         }
+
         GameResult::Draw
     }
 }
+
+
+fn render(sprite:&String, term_col:u16, term_row:u16){
+    let mut string_buff=String::new();
+    let mut row_count=0u16;
+
+    clear_screen();
+    crossterm::execute!(stdout(), cursor::Hide).unwrap();
+
+    if term_col>=30{ 
+        let initial_spaces=" ".repeat(((term_col-30)/2) as usize);    
+        
+        for line in sprite.lines(){
+            row_count+=1;
+            string_buff.push_str(&initial_spaces);
+            let ext_epaces=" ".repeat((31usize - line.chars().count())/2);
+            string_buff.push_str(&ext_epaces);
+            string_buff.push_str(line);
+            string_buff.push('\n');
+        }
+        string_buff.pop().unwrap();
+
+        let skip_rows= if term_row>row_count {(term_row-row_count)/2}else{0};
+        crossterm::execute!(stdout(), cursor::MoveTo(0, skip_rows)).unwrap();
+
+        print!("{string_buff}");
+        stdout().flush().unwrap();
+        
+    }else{
+        let skip_rows= if term_row>row_count {(term_row-row_count)/2}else{0};
+        crossterm::execute!(stdout(), cursor::MoveTo(0, skip_rows)).unwrap();
+
+        print!("Small Terminal");
+        stdout().flush().unwrap();
+    }
+}
+
+fn clear_screen() {
+    crossterm::execute!(
+        stdout(),
+        Clear(ClearType::All),
+        Clear(ClearType::Purge),
+        cursor::MoveTo(0, 0)
+    )
+    .unwrap();
+}
+
 
 fn main() {
     const EMPTY_CELL: [&str; 6] = [
@@ -389,18 +465,39 @@ fn main() {
         result: GameResult::Draw,
     };
 
-    game.update_state(&'1');
-    game.update_state(&'5');
-    // game.update_state(&'0');
-    game.update_state(&'2');
-    game.update_state(&'3');
-    game.update_state(&'4');
-    game.update_state(&'6');
-    game.update_state(&'7');
-    game.update_state(&'1');
-    game.update_state(&'9');
-    game.update_state(&'8');
-
+    let sz = size().unwrap();
     let sprite = game.gen_sprite(&EMPTY_CELL, &O_CELL, &X_CELL);
-    println!("{sprite}");
+    render(&sprite, sz.0, sz.1);
+
+    loop {
+        match event::read().unwrap() {
+            Event::Resize(new_cols, new_rows) => {
+                let sprite = game.gen_sprite(&EMPTY_CELL, &O_CELL, &X_CELL);
+                render(&sprite, new_cols, new_rows);
+            }
+            Event::Key(event) => {
+                if event.kind != KeyEventKind::Press {
+                    continue;
+                }
+
+                if event.code == KeyCode::Esc {
+                    crossterm::execute!(stdout(), cursor::Show).unwrap();
+                    break;
+                }
+                
+                if let KeyCode::Char(c) = event.code{
+                    let s=size().unwrap();
+                    if s.0>=30{
+                        game.update_state(&c);
+                        let sprite = game.gen_sprite(&EMPTY_CELL, &O_CELL, &X_CELL);
+                        render(&sprite, s.0, s.1);
+                    }else{
+                        let st = "Small Terminal".to_string();
+                        render(&st, s.0, s.1);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
