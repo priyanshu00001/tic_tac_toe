@@ -32,7 +32,7 @@ struct GameState {
 impl GameState {
     fn gen_sprite(&self, emty: &[&str; 6], o: &[&str; 6], x: &[&str; 6]) -> String {
         let mut str_buff = String::new();
-        str_buff.push_str("Scores\n--------\n\n");
+        str_buff.push_str("Scores\n------------\n\n");
 
         let xzero = "0".repeat(if self.scores.0 > 99 {
             0
@@ -104,7 +104,7 @@ impl GameState {
         let key = *num_key as u8;
 
         if key < 48 || key > 57 {
-            self.msg = String::from("Press Num Keys 0..9\nInvalid Key Press!\n");
+            self.msg = String::from("Press Num Keys 0..9\n\nInvalid Key Press!\n");
             return;
         }
 
@@ -142,12 +142,14 @@ impl GameState {
                     self.reset_board();
                     self.scores.0 += if self.scores.0<255{1} else {0};
                     self.msg = String::from("🎉 O WON! 🎉\n\nPress num Keys 1 or 2\n\n1:X\n2:O");
+                }else{
+                    self.msg = String::from("Press Num Keys 0..9");
                 }
 
                 self.result=result;
 
             } else {
-                self.msg = String::from("Press Num Keys 0..9\nAlready Occupied!");
+                self.msg = String::from("Press Num Keys 0..9\n\nAlready Occupied!");
             }
 
         } else if key == 1 || key == 2 {
@@ -378,36 +380,27 @@ impl GameState {
 fn render(sprite:&String, term_col:u16, term_row:u16){
     let mut string_buff=String::new();
     let mut row_count=0u16;
+ 
+    let initial_spaces=" ".repeat(if term_col>=30 {((term_col-30)/2) as usize} else {0});    
+    
+    for line in sprite.lines(){
+        row_count+=1;
+        string_buff.push_str(&initial_spaces);
+        let ext_epaces=" ".repeat((31usize - line.chars().count())/2);
+        string_buff.push_str(&ext_epaces);
+        string_buff.push_str(line);
+        string_buff.push('\n');
+    }
+    string_buff.pop().unwrap();
+
+    let skip_rows= if term_row>row_count {(term_row-row_count)/2}else{0};
+    crossterm::execute!(stdout(), cursor::MoveTo(0, skip_rows)).unwrap();
 
     clear_screen();
+    print!("{string_buff}");
+    stdout().flush().unwrap();
+    
     crossterm::execute!(stdout(), cursor::Hide).unwrap();
-
-    if term_col>=30{ 
-        let initial_spaces=" ".repeat(((term_col-30)/2) as usize);    
-        
-        for line in sprite.lines(){
-            row_count+=1;
-            string_buff.push_str(&initial_spaces);
-            let ext_epaces=" ".repeat((31usize - line.chars().count())/2);
-            string_buff.push_str(&ext_epaces);
-            string_buff.push_str(line);
-            string_buff.push('\n');
-        }
-        string_buff.pop().unwrap();
-
-        let skip_rows= if term_row>row_count {(term_row-row_count)/2}else{0};
-        crossterm::execute!(stdout(), cursor::MoveTo(0, skip_rows)).unwrap();
-
-        print!("{string_buff}");
-        stdout().flush().unwrap();
-        
-    }else{
-        let skip_rows= if term_row>row_count {(term_row-row_count)/2}else{0};
-        crossterm::execute!(stdout(), cursor::MoveTo(0, skip_rows)).unwrap();
-
-        print!("Small Terminal");
-        stdout().flush().unwrap();
-    }
 }
 
 fn clear_screen() {
@@ -415,7 +408,9 @@ fn clear_screen() {
         stdout(),
         Clear(ClearType::All),
         Clear(ClearType::Purge),
-        cursor::MoveTo(0, 0)
+        Clear(ClearType::All),
+        Clear(ClearType::Purge),
+        // cursor::MoveTo(0, 0)
     )
     .unwrap();
 }
