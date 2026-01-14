@@ -379,12 +379,16 @@ pub fn render(sprite:&String, term_col:u16, term_row:u16){
     let mut string_buff=String::new();
     let mut row_count=0u16;
  
-    let initial_spaces=" ".repeat(if term_col>=30 {((term_col-30)/2) as usize} else {0});    
-    
+    let initial_spaces=" ".repeat(if term_col>=30 {((term_col-30)/2) as usize} else {0});
+    let max_cols = if term_col>=30 {30usize} else {0};
+
     for line in sprite.lines(){
         row_count+=1;
         string_buff.push_str(&initial_spaces);
-        let ext_epaces=" ".repeat((31usize - line.chars().count())/2);
+        let mut ext_epaces=String::from("");
+        if max_cols == 30{
+            ext_epaces=" ".repeat((max_cols - line.chars().count())/2);
+        }
         string_buff.push_str(&ext_epaces);
         string_buff.push_str(line);
         string_buff.push('\n');
@@ -392,9 +396,10 @@ pub fn render(sprite:&String, term_col:u16, term_row:u16){
     string_buff.pop().unwrap();
 
     let skip_rows= if term_row>row_count {(term_row-row_count)/2}else{0};
-    crossterm::execute!(stdout(), cursor::MoveTo(0, skip_rows)).unwrap();
 
     clear_screen();
+    crossterm::execute!(stdout(), cursor::MoveTo(0, skip_rows)).unwrap();
+
     print!("{string_buff}");
     stdout().flush().unwrap();
 
@@ -408,7 +413,7 @@ fn clear_screen() {
         Clear(ClearType::Purge),
         Clear(ClearType::All),
         Clear(ClearType::Purge),
-        // cursor::MoveTo(0, 0)
+        cursor::MoveTo(0, 0)
     )
     .unwrap();
 }

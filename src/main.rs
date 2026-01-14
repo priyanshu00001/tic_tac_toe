@@ -58,9 +58,16 @@ fn main() {
     loop {
         match event::read().unwrap() {
             Event::Resize(new_cols, new_rows) => {
-                let sprite = game.gen_sprite(&EMPTY_CELL, &O_CELL, &X_CELL);
-                render(&sprite, new_cols, new_rows);
-            }
+                let s=size().unwrap();
+                    if s.0>=30{
+                        let sprite = game.gen_sprite(&EMPTY_CELL, &O_CELL, &X_CELL);
+                        render(&sprite, new_cols, new_rows);
+
+                    }else{
+                        let st = "Small Terminal".to_string();
+                        render(&st, s.0, s.1);
+                    }
+            },
             Event::Key(event) => {
                 if event.kind != KeyEventKind::Press {
                     continue;
@@ -73,16 +80,19 @@ fn main() {
                 
                 if let KeyCode::Char(c) = event.code{
                     let s=size().unwrap();
+
                     if s.0>=30{
                         game.update_state(&c);
                         let sprite = game.gen_sprite(&EMPTY_CELL, &O_CELL, &X_CELL);
                         render(&sprite, s.0, s.1);
+
                     }else{
                         let st = "Small Terminal".to_string();
                         render(&st, s.0, s.1);
                     }
                 }
             }
+            
             _ => {}
         }
     }
